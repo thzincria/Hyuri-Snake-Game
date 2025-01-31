@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    canvas {
+      border: 1px solid #000;
+      display: block;
+      margin: 20px auto;
+      background-color: #8BC34A; /* Cor da grama */
+    }
+
+    #gameOverModal {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: #fff;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    #continueButton {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+  <title>Snake Game</title>
+</head>
+<body>
+  <!-- Adicione a tag de áudio para a música do jogo -->
+  <audio id="backgroundMusic" loop autoplay>
+    <source src="caminho/para/sua/musica.mp3" type="audio/mpeg">
+    Seu navegador não suporta o elemento de áudio.
+  </audio>
+
+  <canvas id="snakeCanvas" width="400" height="400"></canvas>
+  <div id="gameOverModal">
+    <h2>Game Over!</h2>
+    <p>Your score is <span id="score"></span></p>
+    <button id="continueButton">Continue</button>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const canvas = document.getElementById('snakeCanvas');
+      const ctx = canvas.getContext('2d');
+      const gameOverModal = document.getElementById('gameOverModal');
+      const continueButton = document.getElementById('continueButton');
+      const scoreSpan = document.getElementById('score');
+      const eatSound = new Audio('caminho/para/som_da_maca.mp3');
+
+      const box = 20;
+      let snake = [{ x: 10, y: 10 }];
+      let food = { x: 15, y: 15 };
+      let score = 0;
+      let controlsEnabled = true; // Variável de controle para os controles
+
+      let d = 'RIGHT'; // Initial direction
+
+      const headImage = new Image();
+      headImage.src = 'cobra.png'; // Substitua 'head.png' pelo caminho da sua imagem de cabeça
+
+      const bodyImage = new Image();
+      bodyImage.src = 'body.png'; // Substitua 'body.png' pelo caminho da sua imagem de corpo
+
+      const appleImage = new Image();
+      appleImage.src = 'maca.png'; // Substitua 'maca.png' pelo caminho da sua imagem de maçã
+
+      function draw() {
+        // Draw the grass background
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#8BC34A'; // Cor da grama
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw the snake
+        snake.forEach((segment, index) => {
+          if (index === 0) {
+            ctx.drawImage(headImage, segment.x * box, segment.y * box, box, box);
+          } else {
+            ctx.drawImage(bodyImage, segment.x * box, segment.y * box, box, box);
+          }
+        });
+
+        // Draw the apple
+        ctx.drawImage(appleImage, food.x * box, food.y * box, box, box);
+
+        // Draw the score
+        ctx.fillStyle = '#000';
+        ctx.font = '20px Arial';
+        ctx.fillText('Score: ' + score, box, box - 5);
+      }
+
+      function move() {
+        if (!controlsEnabled) return; // Não mova se os controles estiverem desabilitados
+
+        // Move the snake
+        let head;
+        switch (d) {
+          case 'UP':
+            head = { x: snake[0].x, y: snake[0].y - 1 };
+            break;
+          case 'DOWN':
+            head = { x: snake[0].x, y: snake[0].y + 1 };
+            break;
+          case 'LEFT':
+            head = { x: snake[0].x - 1, y: snake[0].y };
+            break;
+          case 'RIGHT':
+            head = { x: snake[0].x + 1, y: snake[0].y };
+            break;
+        }
+
+        // Check for collision with walls or itself
+        if (
+          head.x < 0 ||
+          head.x * box >= canvas.width ||
+          head.y < 0 ||
+          head.y * box >= canvas.height ||
+          collision(head, snake)
+        ) {
+          showGameOverModal();
+          return;
+        }
+
+        // Check for collision with food
+        if (head.x === food.x && head.y === food.y) {
+          score++;
+          food = {
+            x: Math.floor(Math.random() * (canvas.width / box)),
+            y: Math.floor(Math.random() * (canvas.height / box)),
+          };
+          eatSound.play(); // Reproduz o som da maçã
+        } else {
+          snake.pop(); // Remove the tail
+        }
+
+        snake.unshift(head);
+        draw();
+      }
+
+      function collision(head, array) {
+        return array.some(segment => segment.x === head.x && segment.y === head.y);
+      }
+
+      function resetGame() {
+        snake = [{ x: 10, y: 10 }];
+        food = { x: 15, y: 15 };
+        score = 0;
+        d = 'RIGHT';
+        canvas.width = canvas.width;
+        clearInterval(game);
+        game = setInterval(move, 150);
+        controlsEnabled = true; // Habilitar os controles novamente
+      }
+
+      function showGameOverModal() {
+        gameOverModal.style.display = 'block';
+        scoreSpan.textContent = score;
+        controlsEnabled = false; // Desabilitar os controles
+        // Pausa a música de fundo
+        document.getElementById('backgroundMusic').pause();
+      }
+
+      function hideGameOverModal() {
+        gameOverModal.style.display = 'none';
+        // Continua a música de fundo
+        document.getElementById('backgroundMusic').play();
+      }
+
+      document.addEventListener('keydown', e => {
+        if (!controlsEnabled) return; // Não permitir movimento se os controles estiverem desabilitados
+
+        switch (e.key) {
+          case 'ArrowUp':
+            d = 'UP';
+            break;
+          case 'ArrowDown':
+            d = 'DOWN';
+            break;
+          case 'ArrowLeft':
+            d = 'LEFT';
+            break;
+          case 'ArrowRight':
+            d = 'RIGHT';
+            break;
+        }
+      });
+
+      continueButton.addEventListener('click', () => {
+        hideGameOverModal();
+        resetGame();
+      });
+
+      let game = setInterval(move, 150);
+    });
+  </script>
+</body>
+</html>
