@@ -8,9 +8,8 @@
       border: 1px solid #000;
       display: block;
       margin: 20px auto;
-      background-color: #8BC34A; /* Cor da grama */
+      background-color: #8BC34A;
     }
-
     #gameOverModal {
       display: none;
       position: fixed;
@@ -22,8 +21,7 @@
       text-align: center;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
-
-    #continueButton {
+    #continueButton, #startButton {
       padding: 10px 20px;
       font-size: 16px;
       cursor: pointer;
@@ -32,170 +30,137 @@
   <title>Snake Game</title>
 </head>
 <body>
-  <!-- Adicione a tag de áudio para a música do jogo -->
-  <audio id="backgroundMusic" loop autoplay>
+  <button id="startButton">Iniciar Jogo</button>
+  <audio id="backgroundMusic" loop>
     <source src="caminho/para/sua/musica.mp3" type="audio/mpeg">
     Seu navegador não suporta o elemento de áudio.
   </audio>
-
   <canvas id="snakeCanvas" width="400" height="400"></canvas>
   <div id="gameOverModal">
     <h2>Game Over!</h2>
     <p>Your score is <span id="score"></span></p>
     <button id="continueButton">Continue</button>
   </div>
-
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const canvas = document.getElementById('snakeCanvas');
       const ctx = canvas.getContext('2d');
       const gameOverModal = document.getElementById('gameOverModal');
       const continueButton = document.getElementById('continueButton');
+      const startButton = document.getElementById('startButton');
       const scoreSpan = document.getElementById('score');
+      const backgroundMusic = document.getElementById('backgroundMusic');
       const eatSound = new Audio('caminho/para/som_da_maca.mp3');
-
       const box = 20;
       let snake = [{ x: 10, y: 10 }];
       let food = { x: 15, y: 15 };
       let score = 0;
-      let controlsEnabled = true; // Variável de controle para os controles
-
-      let d = 'RIGHT'; // Initial direction
-
+      let controlsEnabled = false;
+      let d = 'RIGHT';
+      let nextDirection = 'RIGHT';
+      
       const headImage = new Image();
-      headImage.src = 'cobra.png'; // Substitua 'head.png' pelo caminho da sua imagem de cabeça
-
       const bodyImage = new Image();
-      bodyImage.src = 'body.png'; // Substitua 'body.png' pelo caminho da sua imagem de corpo
-
       const appleImage = new Image();
-      appleImage.src = 'maca.png'; // Substitua 'maca.png' pelo caminho da sua imagem de maçã
-
+      let imagesLoaded = 0;
+      
+      function imageLoaded() {
+        imagesLoaded++;
+        if (imagesLoaded === 3) {
+          draw();
+        }
+      }
+      
+      headImage.src = 'cobra.png';
+      bodyImage.src = 'body.png';
+      appleImage.src = 'maca.png';
+      
+      headImage.onload = imageLoaded;
+      bodyImage.onload = imageLoaded;
+      appleImage.onload = imageLoaded;
+      
       function draw() {
-        // Draw the grass background
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#8BC34A'; // Cor da grama
+        ctx.fillStyle = '#8BC34A';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Draw the snake
+        
         snake.forEach((segment, index) => {
-          if (index === 0) {
-            ctx.drawImage(headImage, segment.x * box, segment.y * box, box, box);
-          } else {
-            ctx.drawImage(bodyImage, segment.x * box, segment.y * box, box, box);
-          }
+          ctx.drawImage(index === 0 ? headImage : bodyImage, segment.x * box, segment.y * box, box, box);
         });
-
-        // Draw the apple
+        
         ctx.drawImage(appleImage, food.x * box, food.y * box, box, box);
-
-        // Draw the score
+        
         ctx.fillStyle = '#000';
         ctx.font = '20px Arial';
         ctx.fillText('Score: ' + score, box, box - 5);
       }
-
+      
       function move() {
-        if (!controlsEnabled) return; // Não mova se os controles estiverem desabilitados
-
-        // Move the snake
+        if (!controlsEnabled) return;
+        d = nextDirection;
         let head;
         switch (d) {
-          case 'UP':
-            head = { x: snake[0].x, y: snake[0].y - 1 };
-            break;
-          case 'DOWN':
-            head = { x: snake[0].x, y: snake[0].y + 1 };
-            break;
-          case 'LEFT':
-            head = { x: snake[0].x - 1, y: snake[0].y };
-            break;
-          case 'RIGHT':
-            head = { x: snake[0].x + 1, y: snake[0].y };
-            break;
+          case 'UP': head = { x: snake[0].x, y: snake[0].y - 1 }; break;
+          case 'DOWN': head = { x: snake[0].x, y: snake[0].y + 1 }; break;
+          case 'LEFT': head = { x: snake[0].x - 1, y: snake[0].y }; break;
+          case 'RIGHT': head = { x: snake[0].x + 1, y: snake[0].y }; break;
         }
-
-        // Check for collision with walls or itself
-        if (
-          head.x < 0 ||
-          head.x * box >= canvas.width ||
-          head.y < 0 ||
-          head.y * box >= canvas.height ||
-          collision(head, snake)
-        ) {
+        
+        if (head.x < 0 || head.x * box >= canvas.width || head.y < 0 || head.y * box >= canvas.height || collision(head, snake)) {
           showGameOverModal();
           return;
         }
-
-        // Check for collision with food
+        
         if (head.x === food.x && head.y === food.y) {
           score++;
-          food = {
-            x: Math.floor(Math.random() * (canvas.width / box)),
-            y: Math.floor(Math.random() * (canvas.height / box)),
-          };
-          eatSound.play(); // Reproduz o som da maçã
+          food = { x: Math.floor(Math.random() * (canvas.width / box)), y: Math.floor(Math.random() * (canvas.height / box)) };
+          eatSound.play();
         } else {
-          snake.pop(); // Remove the tail
+          snake.pop();
         }
-
+        
         snake.unshift(head);
         draw();
       }
-
+      
       function collision(head, array) {
         return array.some(segment => segment.x === head.x && segment.y === head.y);
       }
-
+      
       function resetGame() {
         snake = [{ x: 10, y: 10 }];
         food = { x: 15, y: 15 };
         score = 0;
         d = 'RIGHT';
-        canvas.width = canvas.width;
+        nextDirection = 'RIGHT';
         clearInterval(game);
         game = setInterval(move, 150);
-        controlsEnabled = true; // Habilitar os controles novamente
+        controlsEnabled = true;
       }
-
+      
       function showGameOverModal() {
         gameOverModal.style.display = 'block';
         scoreSpan.textContent = score;
-        controlsEnabled = false; // Desabilitar os controles
-        // Pausa a música de fundo
-        document.getElementById('backgroundMusic').pause();
+        controlsEnabled = false;
+        backgroundMusic.pause();
       }
-
+      
       function hideGameOverModal() {
         gameOverModal.style.display = 'none';
-        // Continua a música de fundo
-        document.getElementById('backgroundMusic').play();
+        backgroundMusic.play();
       }
-
-      document.addEventListener('keydown', e => {
-        if (!controlsEnabled) return; // Não permitir movimento se os controles estiverem desabilitados
-
-        switch (e.key) {
-          case 'ArrowUp':
-            d = 'UP';
-            break;
-          case 'ArrowDown':
-            d = 'DOWN';
-            break;
-          case 'ArrowLeft':
-            d = 'LEFT';
-            break;
-          case 'ArrowRight':
-            d = 'RIGHT';
-            break;
-        }
+      
+      startButton.addEventListener('click', () => {
+        backgroundMusic.play();
+        controlsEnabled = true;
+        startButton.style.display = 'none';
       });
-
+      
       continueButton.addEventListener('click', () => {
         hideGameOverModal();
         resetGame();
       });
-
+      
       let game = setInterval(move, 150);
     });
   </script>
